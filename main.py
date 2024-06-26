@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import pandas as pd
+from pandas import read_excel
 import time
 from nicegui import ui, native
 import threading
@@ -12,7 +13,6 @@ import asyncio
 
 driver = None
 
-df = pd.DataFrame()
 baseURL = None
 IDlist = None
 
@@ -20,12 +20,6 @@ isNeededDescription = True
 isNeededDimensions = True
 
 mfr_selected = None
-
-description = []
-length = []
-width = []
-height = []
-weight = []
 
 
 #COOKIE KEZELŐ
@@ -137,7 +131,8 @@ def manufacturerSpec(manufacturer):
     global baseURL
     baseURL = specList[manufacturer][0]
     global df
-    df = pd.read_excel(specList[manufacturer][1])
+    df = read_excel(specList[manufacturer][1], dtype=str)
+    print(df)
 
 
 #GYÁRTÓ FOLYAMATOK
@@ -150,20 +145,31 @@ class ManufacturerList:
 
     def weidmueller(self):
         if isNeededDescription:
-            description.append(getTextByName("Verzió"))
+            try:
+                description.append(getTextByName("Verzió"))
+            except NoSuchElementException:
+                description.append("")
         if isNeededDimensions:
-            clickElementByID("ui-id-3")
-            length.append(getTextByName("Mélység"))
-            height.append(getTextByName("Magasság"))
-            width.append(getTextByName("Szélesség"))
-            weight.append(getTextByName("Nettó tömeg"))
-
+            try:
+                clickElementByID("ui-id-3")
+                length.append(getTextByName("Mélység"))
+                height.append(getTextByName("Magasság"))
+                width.append(getTextByName("Szélesség"))
+                weight.append(getTextByName("Nettó tömeg"))
+            except NoSuchElementException:
+                length.append("")
+                height.append("")
+                width.append("")
+                weight.append("")
     def rittal(self):
         cookieHandlerByXPath('//*[@id="swal2-html-container"]/div/div/div[2]/div[3]/div/div/button[2]')
         clickElementByClassName("teaser-link")
         time.sleep(5)
         if isNeededDescription:
-            getTextByClassName("product-description")
+            try:
+                description.append(getTextByClassName("product-description"))
+            except NoSuchElementException:
+                description.append("")
         
 
 async def mainProcess():
@@ -185,17 +191,32 @@ def dataGrabber():
     global driver
     driver = webdriver.Chrome()
     asyncio.run(mainProcess())
-    df['Leírás'] = description
-    df['Hosszúság'] = length
-    df['Szélesség'] = width
-    df['Magasság'] = height
-    df['Tömeg'] = width
+    if isNeededDescription:
+        df['Leírás'] = description
+    if isNeededDimensions:
+        df['Hosszúság'] = length
+        df['Szélesség'] = width
+        df['Magasság'] = height
+        df['Tömeg'] = weight
     timestr = time.strftime('%Y-%m-%d %H-%M')
     df.to_excel(f'./outputs/{mfr_selected} {timestr}.xlsx')
     driver.quit()
+    startButton.enable()
 
 
 def runDataGrabber():
+    global df
+    df = pd.DataFrame()
+    global description
+    description = []
+    global length
+    length = []
+    global height
+    height = []
+    global width
+    width = []
+    global weight
+    weight = []
     thread = threading.Thread(target=dataGrabber)
     thread.start()
     startButton.disable()
