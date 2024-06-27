@@ -2,7 +2,7 @@
 <h3 align='center'>Installation</h3>
 <h3>Method 1:</h3>
 <ol>
-  <li>Clone this repo to your computer</li>
+  <li>Clone this repository to your computer</li>
   <li>Install requirements.txt</li>
   <li>Launch main.py</li>
 </ol>
