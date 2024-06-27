@@ -16,8 +16,8 @@ driver = None
 baseURL = None
 IDlist = None
 
-isNeededDescription = True
-isNeededDimensions = True
+isNeededDescription = False
+isNeededDimensions = False
 
 mfr_selected = None
 
@@ -221,15 +221,25 @@ def runDataGrabber():
     thread.start()
     startButton.disable()
 
+
+@ui.refreshable
+def checkbox():
+    print(selector.value)
+    chkDes = ui.checkbox('Leírás').bind_value(globals(), 'isNeededDescription')
+    chkDim = ui.checkbox('Adatok').bind_value(globals(), 'isNeededDimensions')
+    if selector.value == "Rittal":
+        chkDim.disable()
+
+
 def webUI():
     mfrDropdown = ManufacturerList()
     mfrDropdown_elements = list(mfrDropdown.manufacturers.keys())
     with ui.card().classes('w-full'):
         with ui.row().classes('justify-between items-center w-full'):
             with ui.row().classes('gap-4'):
-                ui.select(mfrDropdown_elements).classes('w-64').bind_value_to(globals(), 'mfr_selected')
-                ui.checkbox('Leírás').bind_value(globals(), 'isNeededDescription')
-                ui.checkbox('Adatok').bind_value(globals(), 'isNeededDimensions')
+                global selector
+                selector = ui.select(mfrDropdown_elements, on_change=lambda:checkbox.refresh()).classes('w-64').bind_value_to(globals(), 'mfr_selected')
+                checkbox()
             global startButton
             startButton = ui.button('Start', on_click=runDataGrabber)
 
