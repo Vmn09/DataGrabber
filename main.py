@@ -4,6 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.keys import Keys
 import pandas as pd
 from pandas import read_excel
 import time
@@ -25,11 +26,22 @@ mfr_selected = None
 #COOKIE KEZELŐ
 def cookieHandlerByXPath(XPath):
     try:
-        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, XPath))).click()
+        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, XPath))).click()
         print("Cookie popup found")
     except (TimeoutException, NoSuchElementException):
         print("Cookie popup not found")
     time.sleep(2)
+
+
+#KERESŐ
+def searchboxByXPath(box, key):
+    waitForElementByXPath(box)
+    ActionChains(driver)\
+        .scroll_to_element(box)\
+        .perform()
+    searchbox = driver.find_element(By.XPATH, box)
+    searchbox.send_keys(key)
+    searchbox.send_keys(Keys.ENTER)
 
 
 #ELEM BETÖLTÉS TIMER
@@ -126,7 +138,8 @@ def clickElementByID(toClick):
 def manufacturerSpec(manufacturer):
     specList = {
         "Weidmüller": ["https://catalog.weidmueller.com/catalog/Start.do?ObjectID=", "./ProductIDs/weidmueller.xlsx"],
-        "Rittal" : ["https://www.rittal.com/hu-hu/websearch?q=", "./ProductIDs/rittal.xlsx"]
+        "Rittal" : ["https://www.rittal.com/hu-hu/websearch?q=", "./ProductIDs/rittal.xlsx"],
+        "Obo" : ["https://www.obo.hu/", "./ProductIDs/obo.xlsx"]
     }
     global baseURL
     baseURL = specList[manufacturer][0]
@@ -140,7 +153,8 @@ class ManufacturerList:
     def __init__(self):
         self.manufacturers = {
             'Weidmüller': self.weidmueller,
-            'Rittal': self.rittal
+            'Rittal': self.rittal,
+            'Obo EXPERIMENTAL': self.obo
         }
 
     def weidmueller(self):
@@ -161,6 +175,7 @@ class ManufacturerList:
                 height.append("")
                 width.append("")
                 weight.append("")
+
     def rittal(self):
         cookieHandlerByXPath('//*[@id="swal2-html-container"]/div/div/div[2]/div[3]/div/div/button[2]')
         clickElementByClassName("teaser-link")
@@ -170,6 +185,10 @@ class ManufacturerList:
                 description.append(getTextByClassName("product-description"))
             except NoSuchElementException:
                 description.append("")
+
+    def obo(self):
+        cookieHandlerByXPath('//*[@id="uc-center-container"]/div[2]/div/div[1]/div/button[1]')
+        searchboxByXPath('//*[@id="js-search"]', current)
         
 
 async def mainProcess():
@@ -180,7 +199,12 @@ async def mainProcess():
             manufacturerSpec(manufacturer)
             IDlist = df['cikkszam'].tolist()
             for ID in IDlist:
-                driver.get(f"{baseURL}{ID}")
+                global current
+                current = ID
+                if manufacturer == "Obo":
+                    driver.get(baseURL)
+                else:
+                    driver.get(f"{baseURL}{ID}")
                 driver.implicitly_wait(0.5)
                 mfr.manufacturers[manufacturer]()
                 await asyncio.sleep(5)
@@ -227,7 +251,7 @@ def checkbox():
     print(selector.value)
     chkDes = ui.checkbox('Leírás').bind_value(globals(), 'isNeededDescription')
     chkDim = ui.checkbox('Adatok').bind_value(globals(), 'isNeededDimensions')
-    if selector.value == "Rittal":
+    if selector.value == "Rittal" or selector.value == "Obo":
         chkDim.disable()
 
 
